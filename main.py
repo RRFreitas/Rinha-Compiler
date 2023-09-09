@@ -41,7 +41,7 @@ class Let(Term):
     def evaluate(self):
         variables[self.name.text] = self.value.evaluate()
         if self.next != None:
-            self.next.evaluate()
+            return self.next.evaluate()
 
 class Var(Term):
 
@@ -70,13 +70,22 @@ class Bool(Term):
     def evaluate(self) -> any:
         return self.value
 
+class Str(Term):
+    
+    def __init__(self, kind: Kind, value: str) -> None:
+        super().__init__(kind)
+        self.value = value
+
+    def evaluate(self) -> any:
+        return self.value
+
 class BinaryOp(Term):
 
     def __init__(self, kind: Kind, name: str) -> None:
         super().__init__(kind)
         self.name = name
 
-    def evaluate(self, a: int, b: int) -> any:
+    def evaluate(self, a: any, b: any) -> any:
         match self.name:
             case "Add":
                 return a + b
@@ -94,6 +103,16 @@ class BinaryOp(Term):
                 return a > b
             case "Eq":
                 return a == b
+            case "Neg":
+                return a != b
+            case "Lte":
+                return a <= b
+            case "Gte":
+                return a <= b
+            case "And":
+                return a and b
+            case "Or":
+                return a or b
 
 class Binary(Term):
 
@@ -113,7 +132,6 @@ class Print(Term):
         self.value = value
 
     def evaluate(self) -> any:
-        print("evaluating print")
         print(self.value.evaluate())
 
 class If(Term):
@@ -144,7 +162,6 @@ class Function(Term):
     
     def call(self) -> any:
         return self.value.evaluate()
-cnt = 0
 class Call(Term):
 
     def __init__(self, kind: Kind, callee: Var, arguments: list[Term]) -> None:
@@ -157,15 +174,9 @@ class Call(Term):
         global variables
         func = variables[self.callee.text]
         old_variables = variables.copy()
-        print(f"calling function")
-        print("old_variables:")
-        print(old_variables)
         for argument, param in zip(self.arguments, func.parameters):
             variables[param.text] = argument.evaluate()
-        print("new_variables:")
-        print(variables)
         value = func.call()
-        print(f"value = {value}")
         variables = old_variables
         return value
 
@@ -235,13 +246,17 @@ def parse(tree):
                 callee    = parse(tree["callee"]),
                 arguments = [parse(arg) for arg in tree["arguments"]]
             )
+        case Kind.STR.value:
+            return Str(
+                kind = tree["kind"],
+                value = tree["value"]
+            )
 
 def parse_ast(tree: dict) -> Interpreter:
     return Interpreter(tree["name"], parse(tree["expression"]))
 
-with open("../files/test.json") as f:
+with open("/var/rinha/source.rinha.json") as f:
     tree = json.loads(f.read())
 
     interpreter = parse_ast(tree)
-    print(interpreter)
     interpreter.evaluate()
